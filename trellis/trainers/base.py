@@ -189,10 +189,11 @@ class Trainer:
             return sample
 
     @torch.no_grad()
-    def snapshot_dataset(self, num_samples=100):
+    def snapshot_dataset(self, num_samples=2):
         """
         Sample images from the dataset.
         """
+        num_samples = 2
         dataloader = torch.utils.data.DataLoader(
             self.dataset,
             batch_size=num_samples,
@@ -217,7 +218,7 @@ class Trainer:
             )
 
     @torch.no_grad()
-    def snapshot(self, suffix=None, num_samples=64, batch_size=4, verbose=False):
+    def snapshot(self, suffix=None, num_samples=2, batch_size=4, verbose=False):
         """
         Sample images from the model.
         NOTE: This function should be called by all processes.

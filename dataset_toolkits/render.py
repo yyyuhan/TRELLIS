@@ -88,7 +88,7 @@ if __name__ == '__main__':
         raise ValueError('metadata.csv not found')
     metadata = pd.read_csv(os.path.join(opt.output_dir, 'metadata.csv'))
     if opt.instances is None:
-        metadata = metadata[metadata['local_path'].notna()]
+        metadata = metadata[metadata['file_identifier'].notna()]
         if opt.filter_low_aesthetic_score is not None:
             metadata = metadata[metadata['aesthetic_score'] >= opt.filter_low_aesthetic_score]
         if 'rendered' in metadata.columns:
