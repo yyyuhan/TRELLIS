@@ -11,6 +11,8 @@ import numpy as np
 from torchvision import utils
 from torch.utils.tensorboard import SummaryWriter
 
+import mlflow
+
 from .utils import *
 from ..utils.general_utils import *
 from ..utils.data_utils import recursive_to_device, cycle, ResumableSampler
@@ -105,6 +107,11 @@ class Trainer:
             os.makedirs(os.path.join(self.output_dir, 'ckpts'), exist_ok=True)
             os.makedirs(os.path.join(self.output_dir, 'samples'), exist_ok=True)
             self.writer = SummaryWriter(os.path.join(self.output_dir, 'tb_logs'))
+            # Only set tracking URI if not running in AzureML
+            if os.environ.get('AZUREML_RUN_ID') is None:
+                mlflow.set_tracking_uri('file://' + os.path.abspath(self.output_dir))
+                mlflow.set_experiment('trellis_training')
+                mlflow.start_run(run_name=f"run_{int(time.time())}")
 
         if self.world_size > 1:
             self.check_ddp()
@@ -425,8 +432,7 @@ class Trainer:
                     log_show = dict_flatten(log_show, sep='/')
                     for key, value in log_show.items():
                         self.writer.add_scalar(key, value, self.step)
-                    log = []
-
+                        mlflow.log_metric(key, float(value), step=self.step)
                 # Save checkpoint
                 if self.step % self.i_save == 0:
                     self.save()
@@ -434,6 +440,7 @@ class Trainer:
         if self.is_master:
             self.snapshot(suffix='final')
             self.writer.close()
+            mlflow.end_run()
             print('Training finished.')
             
     def profile(self, wait=2, warmup=3, active=5):
@@ -449,4 +456,3 @@ class Trainer:
             for _ in range(wait + warmup + active):
                 self.run_step()
                 prof.step()
-            
