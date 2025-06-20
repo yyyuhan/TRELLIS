@@ -138,7 +138,7 @@ python dataset_toolkits/build_metadata.py ObjaverseXL --output_dir datasets/Obja
 To prepare the training data for SLat VAE, we need to extract DINO features from multiview images and aggregate them into sparse voxel grids.
 
 ```
-python dataset_toolkits/extract_features.py --output_dir <OUTPUT_DIR> [--rank <RANK> --world_size <WORLD_SIZE>]
+python dataset_toolkits/extract_feature.py --output_dir <OUTPUT_DIR> [--rank <RANK> --world_size <WORLD_SIZE>]
 ```
 
 - `OUTPUT_DIR`: The directory to save the data.

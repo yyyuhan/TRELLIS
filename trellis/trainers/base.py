@@ -11,6 +11,8 @@ import numpy as np
 from torchvision import utils
 from torch.utils.tensorboard import SummaryWriter
 
+import mlflow
+
 from .utils import *
 from ..utils.general_utils import *
 from ..utils.data_utils import recursive_to_device, cycle, ResumableSampler
@@ -105,6 +107,11 @@ class Trainer:
             os.makedirs(os.path.join(self.output_dir, 'ckpts'), exist_ok=True)
             os.makedirs(os.path.join(self.output_dir, 'samples'), exist_ok=True)
             self.writer = SummaryWriter(os.path.join(self.output_dir, 'tb_logs'))
+            # Only set tracking URI if not running in AzureML
+            if os.environ.get('AZUREML_RUN_ID') is None:
+                mlflow.set_tracking_uri('file://' + os.path.abspath(self.output_dir))
+                mlflow.set_experiment('trellis_training')
+                mlflow.start_run(run_name=f"run_{int(time.time())}")
 
         if self.world_size > 1:
             self.check_ddp()
@@ -189,9 +196,10 @@ class Trainer:
             return sample
 
     @torch.no_grad()
-    def snapshot_dataset(self, num_samples=100):
+    def snapshot_dataset(self, num_samples=2):
         """
         Sample images from the dataset.
+        # Yuhan: reduce the number of samples to 2 for faster testing
         """
         dataloader = torch.utils.data.DataLoader(
             self.dataset,
@@ -217,10 +225,11 @@ class Trainer:
             )
 
     @torch.no_grad()
-    def snapshot(self, suffix=None, num_samples=64, batch_size=4, verbose=False):
+    def snapshot(self, suffix=None, num_samples=2, batch_size=2, verbose=False):
         """
         Sample images from the model.
         NOTE: This function should be called by all processes.
+        # Yuhan: reduce the number of samples to 2 for faster testing
         """
         if self.is_master:
             print(f'\nSampling {num_samples} images...', end='')
@@ -424,17 +433,25 @@ class Trainer:
                     log_show = dict_flatten(log_show, sep='/')
                     for key, value in log_show.items():
                         self.writer.add_scalar(key, value, self.step)
-                    log = []
-
-                # Save checkpoint
-                if self.step % self.i_save == 0:
+                        mlflow.log_metric(key, float(value), step=self.step)
+                # Save checkpoint - also save at the end of training
+                if self.step % self.i_save == 0 or self.step == self.max_steps:
                     self.save()
 
         if self.is_master:
-            self.snapshot(suffix='final')
+            # self.snapshot(suffix='final')
             self.writer.close()
+            mlflow.end_run()
             print('Training finished.')
-            
+
+        print(f'\nTraining finished at step {self.step}.')
+        # Clean up
+        if dist.is_initialized() and self.world_size > 1:
+            print('Cleaning up distributed training...')
+            dist.barrier()
+            dist.destroy_process_group()
+
+
     def profile(self, wait=2, warmup=3, active=5):
         """
         Profile the training loop.
@@ -448,4 +465,3 @@ class Trainer:
             for _ in range(wait + warmup + active):
                 self.run_step()
                 prof.step()
-            

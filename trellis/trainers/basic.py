@@ -367,6 +367,7 @@ class BasicTrainer(Trainer):
                 else:
                     l.backward()
             ## log
+            print(f'\rStep {self.step}, sub batch {i + 1}/{len(data_list)}, loss: {loss["loss"].item():.4f}', end='')
             losses.append(dict_foreach(loss, lambda x: x.item() if isinstance(x, torch.Tensor) else x))
             statuses.append(dict_foreach(status, lambda x: x.item() if isinstance(x, torch.Tensor) else x))
             if self.elastic_controller_config is not None:
