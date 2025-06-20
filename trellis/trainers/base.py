@@ -199,8 +199,8 @@ class Trainer:
     def snapshot_dataset(self, num_samples=2):
         """
         Sample images from the dataset.
+        # Yuhan: reduce the number of samples to 2 for faster testing
         """
-        num_samples = 2
         dataloader = torch.utils.data.DataLoader(
             self.dataset,
             batch_size=num_samples,
@@ -225,10 +225,11 @@ class Trainer:
             )
 
     @torch.no_grad()
-    def snapshot(self, suffix=None, num_samples=2, batch_size=4, verbose=False):
+    def snapshot(self, suffix=None, num_samples=2, batch_size=2, verbose=False):
         """
         Sample images from the model.
         NOTE: This function should be called by all processes.
+        # Yuhan: reduce the number of samples to 2 for faster testing
         """
         if self.is_master:
             print(f'\nSampling {num_samples} images...', end='')
@@ -433,16 +434,24 @@ class Trainer:
                     for key, value in log_show.items():
                         self.writer.add_scalar(key, value, self.step)
                         mlflow.log_metric(key, float(value), step=self.step)
-                # Save checkpoint
-                if self.step % self.i_save == 0:
+                # Save checkpoint - also save at the end of training
+                if self.step % self.i_save == 0 or self.step == self.max_steps:
                     self.save()
 
         if self.is_master:
-            self.snapshot(suffix='final')
+            # self.snapshot(suffix='final')
             self.writer.close()
             mlflow.end_run()
             print('Training finished.')
-            
+
+        print(f'\nTraining finished at step {self.step}.')
+        # Clean up
+        if dist.is_initialized() and self.world_size > 1:
+            print('Cleaning up distributed training...')
+            dist.barrier()
+            dist.destroy_process_group()
+
+
     def profile(self, wait=2, warmup=3, active=5):
         """
         Profile the training loop.
