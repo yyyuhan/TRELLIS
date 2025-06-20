@@ -254,7 +254,7 @@ class TrellisImageTo3DPipeline(Pipeline):
     @torch.no_grad()
     def run(
         self,
-        image: Image.Image,
+        image: Image.Image | List[Image.Image],
         num_samples: int = 1,
         seed: int = 42,
         sparse_structure_sampler_params: dict = {},
@@ -275,8 +275,8 @@ class TrellisImageTo3DPipeline(Pipeline):
             preprocess_image (bool): Whether to preprocess the image.
         """
         if preprocess_image:
-            image = self.preprocess_image(image)
-        cond = self.get_cond([image])
+            images = [self.preprocess_image(img) for img in image]
+        cond = self.get_cond(images)
         torch.manual_seed(seed)
         coords = self.sample_sparse_structure(cond, num_samples, sparse_structure_sampler_params)
         slat = self.sample_slat(cond, coords, slat_sampler_params)

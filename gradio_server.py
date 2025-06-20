@@ -21,7 +21,7 @@ os.environ['SPCONV_ALGO'] = 'native'        # Can be 'native' or 'auto', default
 MAX_USERS = 20
 
 BATCH_INTERVAL = 3  # Batch requests every N seconds
-MAX_BATCH_SIZE = 8    # set to None for unlimited
+MAX_BATCH_SIZE = 16    # set to None for unlimited
 # Thread pool for batch processing
 BATCH_WORKER_THREADS = 8  # Adjust based on your hardware
 batch_executor = concurrent.futures.ThreadPoolExecutor(max_workers=BATCH_WORKER_THREADS)
@@ -62,7 +62,7 @@ def generate_assets_from_image(image, use_process_pool=False, generate_mesh=Fals
         return [], []
     outputs = pipeline.run(
         image,
-        seed=1,
+        seed=42,
     )
     mp4_files = []
     files_to_download = []
